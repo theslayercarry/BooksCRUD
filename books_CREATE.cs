@@ -78,7 +78,7 @@ namespace CityCRUD
              
                 if (cmd.ExecuteNonQuery() == 1)
                 {
-                    MessageBox.Show("Книга '" + textBox_title.Text + " " + textBox_title.Text + "' успешно добавлена.", "Добавление книги...");
+                    MessageBox.Show("Книга '" + textBox_title.Text + "' успешно добавлена.", "Добавление книги...");
 
                     database.closeConnection();
 

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using CityCRUD.Models;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -8,6 +9,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
 
 namespace CityCRUD
 {
@@ -28,6 +31,9 @@ namespace CityCRUD
         {
             CreateColumns();
             refresh();
+
+            // тестирование видов загрузок ORM
+            test_ORM();
         }
 
         private void refresh()  // Обновление значений datagridview, снятие выделения + обновление переменной для проверки выбранной ячейки ( = null)
@@ -92,6 +98,7 @@ namespace CityCRUD
             }
             reader.Close();
         }
+
 
         private void dataGridView1_CellClick(object sender, DataGridViewCellEventArgs e)
         {
@@ -181,6 +188,77 @@ namespace CityCRUD
         private void label4_Click(object sender, EventArgs e)
         {
 
+        }
+
+        private void test_ORM()
+        {
+            // ВИДЫ ЗАГРУЗОК ORM И ВРЕМЯ ИХ ВЫПОЛНЕНИЯ: //
+            // 1) Жадная загрузка (Eager Loading)
+            var stopwatchEager = Stopwatch.StartNew();
+            using (var context = new books_db_klychevContext())
+            {
+                var authorsWithBooks = context.Authors
+                                              .Include(a => a.Books)
+                                              .ToList();
+
+                foreach (var author in authorsWithBooks)
+                {
+                    Console.WriteLine($"Author: {author.Name} {author.Lastname}");
+                    foreach (var book in author.Books)
+                    {
+                        Console.WriteLine($" - Book: {book.Title}");
+                    }
+                }
+            }
+            stopwatchEager.Stop();
+            Console.WriteLine($"Жадная загрузка: {stopwatchEager.ElapsedMilliseconds} ms");
+            
+
+            // 2) Явная загрузка (Explicit Loading)
+            var stopwatchExplicit = Stopwatch.StartNew();
+            using (var context = new books_db_klychevContext())
+            {
+                var author = context.Authors.FirstOrDefault(a => a.Id == 1);
+
+                if (author != null)
+                {
+                    context.Entry(author)
+                           .Collection(a => a.Books)
+                           .Load();
+
+                    Console.WriteLine($"Author: {author.Name} {author.Lastname}");
+                    foreach (var book in author.Books)
+                    {
+                        Console.WriteLine($" - Book: {book.Title}");
+                    }
+                }
+            }
+            stopwatchExplicit.Stop();
+            Console.WriteLine($"Явная загрузка: {stopwatchExplicit.ElapsedMilliseconds} ms");
+
+
+            // 3) Ленивая загрузка (Lazy Loading)
+            var stopwatchLazy = Stopwatch.StartNew();
+            using (var context = new books_db_klychevContext())
+            {
+                var author = context.Authors.FirstOrDefault(a => a.Id == 1);
+
+                if (author != null)
+                {
+                    Console.WriteLine($"Author: {author.Name} {author.Lastname}");
+                    foreach (var book in author.Books)
+                    {
+                        Console.WriteLine($" - Book: {book.Title}");
+                    }
+                }
+            }
+            stopwatchLazy.Stop();
+            Console.WriteLine($"Ленивая загрузка: {stopwatchLazy.ElapsedMilliseconds} ms");
+
+
+
+            // ГЕНЕРАЦИЯ SQL-ЗАПРОСОВ: //
+           
         }
     }
 }
