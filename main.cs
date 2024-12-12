@@ -192,7 +192,7 @@ namespace CityCRUD
 
         private void test_ORM()
         {
-            // ВИДЫ ЗАГРУЗОК ORM И ВРЕМЯ ИХ ВЫПОЛНЕНИЯ: //
+            /*// ВИДЫ ЗАГРУЗОК ORM И ВРЕМЯ ИХ ВЫПОЛНЕНИЯ: //
             // 1) Жадная загрузка (Eager Loading)
             var stopwatchEager = Stopwatch.StartNew();
             using (var context = new books_db_klychevContext())
@@ -203,16 +203,16 @@ namespace CityCRUD
 
                 foreach (var author in authorsWithBooks)
                 {
-                    Console.WriteLine($"Author: {author.Name} {author.Lastname}");
+                    Console.WriteLine($"Автор: {author.Name} {author.Lastname}");
                     foreach (var book in author.Books)
                     {
-                        Console.WriteLine($" - Book: {book.Title}");
+                        Console.WriteLine($"- Книга: \"{book.Title}\"");
                     }
                 }
             }
             stopwatchEager.Stop();
-            Console.WriteLine($"Жадная загрузка: {stopwatchEager.ElapsedMilliseconds} ms");
-            
+            Console.WriteLine($"Жадная загрузка: {stopwatchEager.ElapsedMilliseconds} ms\n\n");
+
 
             // 2) Явная загрузка (Explicit Loading)
             var stopwatchExplicit = Stopwatch.StartNew();
@@ -226,15 +226,15 @@ namespace CityCRUD
                            .Collection(a => a.Books)
                            .Load();
 
-                    Console.WriteLine($"Author: {author.Name} {author.Lastname}");
+                    Console.WriteLine($"Автор: {author.Name} {author.Lastname}");
                     foreach (var book in author.Books)
                     {
-                        Console.WriteLine($" - Book: {book.Title}");
+                        Console.WriteLine($"- Книга: \"{book.Title}\"");
                     }
                 }
             }
             stopwatchExplicit.Stop();
-            Console.WriteLine($"Явная загрузка: {stopwatchExplicit.ElapsedMilliseconds} ms");
+            Console.WriteLine($"Явная загрузка: {stopwatchExplicit.ElapsedMilliseconds} ms\n\n");
 
 
             // 3) Ленивая загрузка (Lazy Loading)
@@ -245,20 +245,110 @@ namespace CityCRUD
 
                 if (author != null)
                 {
-                    Console.WriteLine($"Author: {author.Name} {author.Lastname}");
+                    Console.WriteLine($"Автор: {author.Name} {author.Lastname}");
                     foreach (var book in author.Books)
                     {
-                        Console.WriteLine($" - Book: {book.Title}");
+                        Console.WriteLine($"- Книга: \"{book.Title}\"");
                     }
                 }
             }
             stopwatchLazy.Stop();
-            Console.WriteLine($"Ленивая загрузка: {stopwatchLazy.ElapsedMilliseconds} ms");
+            Console.WriteLine($"Ленивая загрузка: {stopwatchLazy.ElapsedMilliseconds} ms\n\n");
 
 
 
-            // ГЕНЕРАЦИЯ SQL-ЗАПРОСОВ: //
-           
+            // Использование JOIN и LEFT JOIN: //
+            // 1) JOIN
+            using (var context = new books_db_klychevContext())
+            {
+                var booksWithAuthors = from book in context.Books
+                                       join author in context.Authors
+                                       on book.IdAuthor equals author.Id
+                                       select new
+                                       {
+                                           BookTitle = book.Title,
+                                           AuthorName = $"{author.Name} {author.Lastname}"
+                                       };
+
+                foreach (var item in booksWithAuthors)
+                {
+                    Console.WriteLine($"Книга: {item.BookTitle}, Автор: {item.AuthorName}");
+                }
+            }
+
+            // 2) Left JOIN
+            Console.WriteLine($"\nLeft JOIN:");
+            using (var context = new books_db_klychevContext())
+            {
+                var booksWithAuthors = from book in context.Books
+                                       join author in context.Authors
+                                       on book.IdAuthor equals author.Id into authorGroup
+                                       from author in authorGroup.DefaultIfEmpty()
+                                       select new
+                                       {
+                                           BookTitle = book.Title,
+                                           AuthorName = author != null ? $"{author.Name} {author.Lastname}" : "Неизвестный автор"
+                                       };
+
+                foreach (var item in booksWithAuthors)
+                {
+                    Console.WriteLine($"Книга: {item.BookTitle}, Автор: {item.AuthorName}");
+                }
+            }*/
+
+            // 1) Прямой SQL - запрос для получения всех авторов с их книгами
+            var stopwatchSql = Stopwatch.StartNew();
+
+            string queryString = $"select concat(name,' ',lastname) as author_name, books.title from authors\r\n  join books on books.id_author = authors.id;";
+            database.openConnection();
+
+            using (SqlCommand command = new SqlCommand(queryString, database.getConnection()))
+            {
+                using (SqlDataReader reader = command.ExecuteReader())
+                {
+
+                    while (reader.Read())
+                    {
+                        string authorName = reader.GetString(0);
+                        string bookTitle = reader.GetString(1);
+
+                        Console.WriteLine($"Автор: {authorName}, Книга - \"{bookTitle}\"");
+                    }
+                    reader.Close();
+                }
+            }
+
+            stopwatchSql.Stop();
+            Console.WriteLine($"Прямой SQL-запрос: {stopwatchSql.ElapsedMilliseconds} ms\n\n");
+
+
+            // 2) Прямой SQL - запрос для получения конкретного автора с его книгами
+            stopwatchSql = Stopwatch.StartNew();
+
+            queryString = $"select concat(name,' ',lastname) as author_name, books.title from authors\r\n  join books on books.id_author = authors.id where authors.id = @authors_id;";
+            database.openConnection();
+
+            using (SqlCommand command = new SqlCommand(queryString, database.getConnection()))
+            {
+                command.Parameters.AddWithValue("@authors_id", 10); // нужный ID автора
+
+                using (SqlDataReader reader = command.ExecuteReader())
+                {
+
+                    while (reader.Read())
+                    {
+                        string authorName = reader.GetString(0);
+                        string bookTitle = reader.GetString(1);
+
+                        Console.WriteLine($"Автор: {authorName}, Книга - \"{bookTitle}\"");
+                    }
+                    reader.Close();
+                }
+            }
+
+            stopwatchSql.Stop();
+            Console.WriteLine($"Прямой SQL-запрос (один автор): {stopwatchSql.ElapsedMilliseconds} ms\n\n");
+
         }
     }
 }
